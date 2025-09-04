@@ -277,13 +277,15 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
       })
       console.groupEnd()
 
-      if (myOffer) {
-        console.log('Обновление цены офера')
-        await portalsCheckOfferPositionUpdatePrice({ price: maxOfferPrice + 0.01, offerId: myOffer.id })
-      } else {
-        console.log('Офера не найден')
-        await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
-      }
+      await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
+
+      // if (myOffer) {
+      //   console.log('Обновление цены офера')
+      //   await portalsCheckOfferPositionUpdatePrice({ price: maxOfferPrice + 0.01, offerId: myOffer.id })
+      // } else {
+      //   console.log('Офера не найден')
+      //   await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
+      // }
     } else {
       console.group('Пропускаем коллекцию' + collections.find(({ id }) => id === collectionId).name)
       console.log(JSON.stringify({ maxOfferPrice, floorPrice, diffPercent }, null, 2))
