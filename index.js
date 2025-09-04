@@ -169,7 +169,9 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
 
   if (!myOffer?.id) {
     console.log('В данной коллекции нет моего офера ' + collectionId)
-    clearInterval(controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId).interval)
+    if (controlMaxOfferPriceCollectionsIntervals?.find(interval => interval.collectionId === collectionId)) {
+      clearInterval(controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId).interval)
+    }
 
     if (prevOffer) {
       fs.writeFileSync(`last_offer_${Date.now()}.json`, JSON.stringify(prevOffer, null, 2))
@@ -207,24 +209,31 @@ const act = async ({ collectionId }) => {
   await saveMaxPrice({ collectionId })
 };
 
-
-const controlMaxOfferPriceCollections = [
-  'c2d8ee29-e14b-4372-9b79-72407f9d593d', // Snoop Dogg
-  '6bf906a0-e5b1-4c7f-b741-a70c3f7ed77b', // Holiday Drink
-  '45aa08dd-94e0-492f-bf04-1952aa024951' // Diamond Ring
-]
-
-controlMaxOfferPriceCollections.forEach(collectionId => {
-  // act({ collectionId })
-  const interval = setInterval(async () => {
+const main = async () => {
+  const collections = await getCollections()
+  const collectionIds = collections.collections.map(({ id }) => id)
+  
+  for (const collectionId of collectionIds) {
     await act({ collectionId })
-  }, INTERVAL_TIME)
+    await delay(1000)
 
-  controlMaxOfferPriceCollectionsIntervals.push({
-    collectionId,
-    interval,
-  })
-})
+    if (!controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId)) {
+      const interval = setInterval(async () => {
+        await act({ collectionId })
+      }, INTERVAL_TIME)
+  
+      controlMaxOfferPriceCollectionsIntervals.push({
+        collectionId,
+        interval,
+      })  
+    }
+  }
+}
+
+main()
+setInterval(() => {
+  main()
+}, 1000 * 60 * 60)
 
 // ---
 
