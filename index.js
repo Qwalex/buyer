@@ -162,14 +162,6 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   const needPrice = Number((currentOffersMaxPrice < availableMaxPrice ? currentOffersMaxPrice + 0.01 : availableMaxPrice).toFixed(2))
   const offerId = myOffer.id
 
-  console.log({
-    myOfferPrice,
-    floorPrice,
-    availableMaxPrice,
-    currentOffersMaxPrice,
-    needPrice,
-  })
-
   if (!offerId) {
     console.log('В данной коллекции нет моего офера' + collectionId)
     clearInterval(controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId).interval)
@@ -180,6 +172,13 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   
   if (myOfferPrice !== needPrice) {
     console.log('price updated')
+    console.log({
+      myOfferPrice,
+      floorPrice,
+      availableMaxPrice,
+      currentOffersMaxPrice,
+      needPrice,
+    })
     await portalsCheckOfferPositionUpdatePrice({ price: needPrice, offerId })
   }
 }
