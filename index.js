@@ -1,12 +1,7 @@
 const fs = require('fs');
+const getToken = require('./libs/getToken');
+const sendNotification = require('./libs/sendNotification');
 require('dotenv').config();
-
-const getToken = async () => {
-  const response = await fetch(`https://dev.qwalex.ru/gift-api/api/getPortalsKey?password=${process.env.PORTALS_KEY_PASSWORD}`)
-  const { data } = await response.json()
-
-  return `tma ${data}`
-}
 
 const user_id = process.env.USER_ID;
 const controlMaxOfferPriceCollectionsIntervals = []
@@ -159,6 +154,7 @@ const isMyOffer = ({ sender_id }) => {
 }
 
 const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
+  console.log('Запуск функции saveMaxPrice для коллекции ' + collectionId)
   const offers = await portalsCheckOfferGetAll({ collectionId })
   const myOffer = offers.find(isMyOffer)
   let prevOffer
@@ -205,21 +201,23 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
 
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
 
-const act = async ({ collectionId }) => {
-  await saveMaxPrice({ collectionId })
-};
+const getMyOffer = async ({ collectionId }) => {
+  const offers = await portalsCheckOfferGetAll({ collectionId })
+  return offers.find(isMyOffer)
+}
 
-const main = async () => {
+const startCorrectMaxOfferPrice = async () => {
   const collections = await getCollections()
   const collectionIds = collections.collections.map(({ id }) => id)
   
   for (const collectionId of collectionIds) {
-    await act({ collectionId })
+    await saveMaxPrice({ collectionId })
     await delay(1000)
 
     if (!controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId)) {
+      console.log('Создание интервала для коллекции ' + collectionId)
       const interval = setInterval(async () => {
-        await act({ collectionId })
+        await saveMaxPrice({ collectionId })
       }, INTERVAL_TIME)
   
       controlMaxOfferPriceCollectionsIntervals.push({
@@ -230,29 +228,72 @@ const main = async () => {
   }
 }
 
-main()
-setInterval(() => {
-  main()
-}, 1000 * 60 * 60)
+/**
+ * 
+ * @param {*} func - функция для запуска
+ * @param {*} interval - интервал в минутах
+ */
+const start = (func, interval) => {
+  func()
+  setInterval(async () => {
+    await func()
+  }, interval * 1000 * 60)
+}
 
-// ---
-
-// const main = async () => {
-//   const collections = await optimizedGetCollections()
-//   const collectionIds = collections.collections.map(({ id }) => id)
+/**
+ * @param {number} needDiffPercent - минимальная разница в процентах между максимальной ценой офера и ценой флоора
+ * @param {number} maxPrice - максимальная цена коллекции
+ */
+const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
+  if (!needDiffPercent || !maxPrice) {
+    throw new Error('Не переданы параметры needDiffPercent или maxPrice')
+  }
   
-//   for (const collectionId of collectionIds) {
-//     const offers = await portalsCheckOfferGetAll({ collectionId })
-//     const maxOfferPrice = Math.max(...offers.filter(({ sender_id }) => sender_id !== +user_id).map(({ amount }) => Number(amount)))
-//     const floorPrice = Number(offers[0].collection.floor_price)
-//     await delay(1000)
-//     console.log({
-//       maxOfferPrice,
-//       floorPrice,
-//     })
-//     console.log('---')
-//   }
-// }
+  const { collections } = await getCollections()
+  const collectionIds = collections.map(({ id }) => id)
+  
+  for (const collectionId of collectionIds) {
+    const offers = (await portalsCheckOfferGetAll({ collectionId })).filter(({ sender_id }) => sender_id !== +user_id)
+    const maxOfferPrice = Math.max(...offers.map(({ amount }) => Number(amount)))
+    const floorPrice = Number(offers[0].collection.floor_price)
+    const diffPercent = Number((100 - (((maxOfferPrice + 0.01) / floorPrice) * 100)).toFixed(2))
+    const maxComfortPrice = Number((floorPrice - (floorPrice * (needDiffPercent / 100))).toFixed(2))
+    await delay(1000)
+    
+    if (diffPercent > needDiffPercent && floorPrice <= maxPrice) {
+      if (controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId)) {
+        console.log('Эта коллекция уже в процессе обработки на покупку')
+        return 
+      }
 
-// main()
-// ---
+      const myOffer = await getMyOffer({ collectionId })
+      console.group('Найдена большая разница в цене')
+      console.log({
+        collection: collections.find(({ id }) => id === collectionId).name,
+        maxOfferPrice,
+        floorPrice,
+        diffPercent,
+        maxComfortPrice,
+      })
+      console.groupEnd()
+
+      if (myOffer) {
+        console.log('Обновление цены офера')
+        await portalsCheckOfferPositionUpdatePrice({ price: maxOfferPrice + 0.01, offerId: myOffer.id })
+      } else {
+        console.log('Офера не найден')
+        await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
+      }
+    } else {
+      console.group('Пропускаем коллекцию' + collections.find(({ id }) => id === collectionId).name)
+      console.log(JSON.stringify({ maxOfferPrice, floorPrice, diffPercent }, null, 2))
+      console.groupEnd()
+    }
+  }
+}
+
+// -- start section
+start(startCorrectMaxOfferPrice)
+start(() => searchDiscount({ needDiffPercent: 7, maxPrice: 35 }), 10)
+
+/** нужен кейс где идет покупка и запущен поиск дисконта */
