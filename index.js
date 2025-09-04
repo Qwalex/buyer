@@ -208,7 +208,6 @@ const getMyOffer = async ({ collectionId }) => {
 }
 
 const startCorrectMaxOfferPrice = async () => {
-  console.group('startCorrectMaxOfferPrice')
   const collections = await getCollections()
   // console.log('collections', collections)
   const collectionIds = collections.collections.map(({ id }) => id)
@@ -229,7 +228,6 @@ const startCorrectMaxOfferPrice = async () => {
       })  
     }
   }
-  console.groupEnd()
 }
 
 /**
@@ -251,7 +249,6 @@ const start = async (func, interval) => {
  * @param {number} maxPrice - максимальная цена коллекции
  */
 const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
-  console.group('searchDiscount')
   if (!needDiffPercent || !maxPrice) {
     throw new Error('Не переданы параметры needDiffPercent или maxPrice')
   }
@@ -299,7 +296,6 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
       console.groupEnd()
     }
   }
-  console.groupEnd()
 }
 
 // -- start section
