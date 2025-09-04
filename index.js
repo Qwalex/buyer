@@ -171,7 +171,7 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   }
   
   if (myOfferPrice !== needPrice) {
-    console.log('price updated')
+    console.log('Цена обновлена для коллекции ' + collectionId)
     console.log({
       myOfferPrice,
       floorPrice,
@@ -180,6 +180,8 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
       needPrice,
     })
     await portalsCheckOfferPositionUpdatePrice({ price: needPrice, offerId })
+  } else {
+    console.log('Цены актуальны для коллекции ' + collectionId)
   }
 }
 
