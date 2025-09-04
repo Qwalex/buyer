@@ -210,7 +210,8 @@ const act = async ({ collectionId }) => {
 
 const controlMaxOfferPriceCollections = [
   'c2d8ee29-e14b-4372-9b79-72407f9d593d', // Snoop Dogg
-  '6bf906a0-e5b1-4c7f-b741-a70c3f7ed77b' // Holiday Drink
+  '6bf906a0-e5b1-4c7f-b741-a70c3f7ed77b', // Holiday Drink
+  '45aa08dd-94e0-492f-bf04-1952aa024951' // Diamond Ring
 ]
 
 controlMaxOfferPriceCollections.forEach(collectionId => {
