@@ -220,6 +220,7 @@ const startCorrectMaxOfferPrice = async () => {
       console.log('Создание интервала для коллекции ' + collectionId)
       const interval = setInterval(async () => {
         await saveMaxPrice({ collectionId })
+        console.log('--------------------------------')
       }, INTERVAL_TIME)
   
       controlMaxOfferPriceCollectionsIntervals.push({
@@ -240,6 +241,7 @@ const start = async (func, interval) => {
   await delay(1000)
   setInterval(async () => {
     await func()
+    console.log('--------------------------------')
   }, interval * 1000 * 60)
   await delay(1000)
 }
