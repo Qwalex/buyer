@@ -234,11 +234,13 @@ const startCorrectMaxOfferPrice = async () => {
  * @param {*} func - функция для запуска
  * @param {*} interval - интервал в минутах
  */
-const start = (func, interval) => {
-  func()
+const start = async (func, interval) => {
+  await func()
+  await delay(1000)
   setInterval(async () => {
     await func()
   }, interval * 1000 * 60)
+  await delay(1000)
 }
 
 /**
