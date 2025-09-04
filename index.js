@@ -156,6 +156,7 @@ const isMyOffer = ({ sender_id }) => {
 
 const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   console.log('Запуск функции saveMaxPrice для коллекции ' + collectionId)
+  await delay(1000)
   const offers = await portalsCheckOfferGetAll({ collectionId })
   const myOffer = offers.find(isMyOffer)
   let prevOffer
