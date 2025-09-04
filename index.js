@@ -208,6 +208,7 @@ const getMyOffer = async ({ collectionId }) => {
 
 const startCorrectMaxOfferPrice = async () => {
   const collections = await getCollections()
+  console.log('collections', collections)
   const collectionIds = collections.collections.map(({ id }) => id)
   
   for (const collectionId of collectionIds) {
