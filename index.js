@@ -12,6 +12,18 @@ const user_id = process.env.USER_ID;
 const controlMaxOfferPriceCollectionsIntervals = []
 const INTERVAL_TIME = 10000
 
+const optimizedGetCollections = async () => {
+  let collections
+
+  if (fs.existsSync('collections.json')) {
+    collections = JSON.parse(fs.readFileSync('collections.json', 'utf8'))
+  } else {
+    collections = await getCollections()
+    fs.writeFileSync('collections.json', JSON.stringify(collections, null, 2))
+  }
+
+  return collections
+}
 
 const getCollections = async () => {
   const auth_token = await getToken()
@@ -155,20 +167,24 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
     prevOffer = myOffer
   }
 
+  if (!myOffer?.id) {
+    console.log('В данной коллекции нет моего офера ' + collectionId)
+    clearInterval(controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId).interval)
+
+    if (prevOffer) {
+      fs.writeFileSync(`last_offer_${Date.now()}.json`, JSON.stringify(prevOffer, null, 2))
+      fetch('https://dev.qwalex.ru/notify/?text=prev_offer_saved')
+    }
+
+    return
+  }
+
   const myOfferPrice = Number(myOffer.amount)
   const floorPrice = Number(offers[0].collection.floor_price)
   const availableMaxPrice = Number((floorPrice - (includeCommision ? floorPrice * 0.05 : 0) - 0.01).toFixed(2))
   const currentOffersMaxPrice = Math.max(...offers.filter(({ sender_id }) => sender_id !== +user_id).map(({ amount }) => Number(Number(amount).toFixed(2))))
   const needPrice = Number((currentOffersMaxPrice < availableMaxPrice ? currentOffersMaxPrice + 0.01 : availableMaxPrice).toFixed(2))
   const offerId = myOffer.id
-
-  if (!offerId) {
-    console.log('В данной коллекции нет моего офера' + collectionId)
-    clearInterval(controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId).interval)
-    fs.writeFileSync(`last_offer_${Date.now()}.json`, JSON.stringify(prevOffer, null, 2))
-    fetch('https://dev.qwalex.ru/notify/?text=prev_offer_saved')
-    return
-  }
   
   if (myOfferPrice !== needPrice) {
     console.log('Цена обновлена для коллекции ' + collectionId)
@@ -185,9 +201,12 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   }
 }
 
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms))
+
 const act = async ({ collectionId }) => {
   await saveMaxPrice({ collectionId })
 };
+
 
 const controlMaxOfferPriceCollections = [
   'c2d8ee29-e14b-4372-9b79-72407f9d593d', // Snoop Dogg
@@ -205,3 +224,25 @@ controlMaxOfferPriceCollections.forEach(collectionId => {
     interval,
   })
 })
+
+// ---
+
+// const main = async () => {
+//   const collections = await optimizedGetCollections()
+//   const collectionIds = collections.collections.map(({ id }) => id)
+  
+//   for (const collectionId of collectionIds) {
+//     const offers = await portalsCheckOfferGetAll({ collectionId })
+//     const maxOfferPrice = Math.max(...offers.filter(({ sender_id }) => sender_id !== +user_id).map(({ amount }) => Number(amount)))
+//     const floorPrice = Number(offers[0].collection.floor_price)
+//     await delay(1000)
+//     console.log({
+//       maxOfferPrice,
+//       floorPrice,
+//     })
+//     console.log('---')
+//   }
+// }
+
+// main()
+// ---
