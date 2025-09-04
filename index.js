@@ -209,8 +209,8 @@ const getMyOffer = async ({ collectionId }) => {
   return offers.find(isMyOffer)
 }
 
-const startCorrectMaxOfferPrice = async () => {
-  const collections = await getCollections()
+const startCorrectMaxOfferPrice = async ({ needCollections = null }) => {
+  const collections = needCollections ? needCollections : await getCollections()
   // console.log('collections', collections)  
   const collectionIds = collections.collections.map(({ id }) => id)
   
@@ -267,14 +267,14 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
     const diffPercent = Number((100 - (((maxOfferPrice + 0.01) / floorPrice) * 100)).toFixed(2))
     const maxComfortPrice = Number((floorPrice - (floorPrice * (needDiffPercent / 100))).toFixed(2))
     await delay(1000)
+    const myOffer = await getMyOffer({ collectionId })
     
     if (diffPercent > needDiffPercent && floorPrice <= maxPrice) {
       if (controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId)) {
         console.log('Эта коллекция уже в процессе обработки на покупку')
         return 
       }
-
-      const myOffer = await getMyOffer({ collectionId })
+      
       console.group('Найдена большая разница в цене')
       console.log({
         collection: collections.find(({ id }) => id === collectionId).name,
@@ -285,16 +285,21 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
       })
       console.groupEnd()
 
-      await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
+      // await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
 
-      // if (myOffer) {
-      //   console.log('Обновление цены офера')
-      //   await portalsCheckOfferPositionUpdatePrice({ price: maxOfferPrice + 0.01, offerId: myOffer.id })
-      // } else {
-      //   console.log('Офера не найден')
-      //   await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
-      // }
+      if (myOffer) {
+        console.log('Обновление цены офера')
+        await portalsCheckOfferPositionUpdatePrice({ price: maxOfferPrice + 0.01, offerId: myOffer.id })
+        await delay(5000)
+      } else {
+        console.log('Офер не найден')
+        await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
+      }
     } else {
+      if (myOffer) {
+        await portalsCheckOfferPositionUpdatePrice({ price: maxComfortPrice, offerId: myOffer.id })
+        console.log('Цена офера обновлена на максимально комфортную')
+      }
       console.group('Пропускаем коллекцию ' + collections.find(({ id }) => id === collectionId).name)
       console.log(JSON.stringify({ maxOfferPrice, floorPrice, diffPercent }))
       console.groupEnd()
@@ -303,7 +308,7 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
 }
 
 // -- start section
-start(startCorrectMaxOfferPrice)
+start(() => startCorrectMaxOfferPrice(['1501b9b9-83e0-4d05-a3af-d0e2021c6d5e']))
 start(() => searchDiscount({ needDiffPercent: 7, maxPrice: 35 }), 10)
 
 /** нужен кейс где идет покупка и запущен поиск дисконта */
