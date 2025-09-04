@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  buery:
+    build: .
+    container_name: buery-app
+    environment:
+      - NODE_ENV=production
+      - PORTALS_KEY_PASSWORD=${PORTALS_KEY_PASSWORD}
+      - USER_ID=${USER_ID}
+    restart: unless-stopped
+    volumes:
+      - ./logs:/app/logs
+    networks:
+      - buery-network
+
+networks:
+  buery-network:
+    driver: bridge
+
+volumes:
+  logs:
