@@ -61,6 +61,7 @@ const portalsCheckOfferGetAll = async ({ collectionId }) => {
       method: 'GET',
     },
   );
+  await delay(1000)
   return await response.json();
 };
 
@@ -209,12 +210,12 @@ const getMyOffer = async ({ collectionId }) => {
 
 const startCorrectMaxOfferPrice = async () => {
   const collections = await getCollections()
-  // console.log('collections', collections)
+  // console.log('collections', collections)  
   const collectionIds = collections.collections.map(({ id }) => id)
   
   for (const collectionId of collectionIds) {
     await saveMaxPrice({ collectionId })
-    await delay(1000)
+    await delay(2000)
 
     if (!controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId)) {
       console.log('Создание интервала для коллекции ' + collectionId)
