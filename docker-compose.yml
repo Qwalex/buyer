@@ -8,9 +8,12 @@ services:
       - NODE_ENV=production
       - PORTALS_KEY_PASSWORD=${PORTALS_KEY_PASSWORD}
       - USER_ID=${USER_ID}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - DATABASE_URL=file:./prisma/collections.db
     restart: unless-stopped
     volumes:
       - ./logs:/app/logs
+      - ./prisma:/app/prisma
     networks:
       - buery-network
 
