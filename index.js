@@ -1,48 +1,35 @@
 const fs = require('fs');
-const getToken = require('./libs/getToken');
-const sendNotification = require('./libs/sendNotification');
+const getToken = require('./libs/getToken.js');
+const sendNotification = require('./libs/sendNotification.js');
+const getCollections = require('./libs/getCollections.js');
+const database = require('./database.js');
 require('dotenv').config();
 
 const user_id = process.env.USER_ID;
 const controlMaxOfferPriceCollectionsIntervals = []
 const INTERVAL_TIME = 10000
+let previousMessage = null
 
-const optimizedGetCollections = async () => {
-  let collections
-
-  if (fs.existsSync('collections.json')) {
-    collections = JSON.parse(fs.readFileSync('collections.json', 'utf8'))
-  } else {
-    collections = await getCollections()
-    fs.writeFileSync('collections.json', JSON.stringify(collections, null, 2))
+// Инициализация базы данных
+const initDatabase = async () => {
+  try {
+    await database.init();
+    console.log('База данных инициализирована');
+  } catch (error) {
+    console.error('Ошибка инициализации базы данных:', error);
   }
-
-  return collections
 }
 
-const getCollections = async () => {
-  const auth_token = await getToken()
-  const myHeaders = new Headers();
-  myHeaders.append("sec-ch-ua-platform", "\"Windows\"");
-  myHeaders.append("Authorization", auth_token);
-  myHeaders.append("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36");
-  myHeaders.append("Accept", "application/json, text/plain, */*");
-  myHeaders.append("sec-ch-ua", "\"Not;A=Brand\";v=\"99\", \"Google Chrome\";v=\"139\", \"Chromium\";v=\"139\"");
-  myHeaders.append("sec-ch-ua-mobile", "?0");
-  myHeaders.append("Sec-Fetch-Site", "same-origin");
-  myHeaders.append("Sec-Fetch-Mode", "cors");
-  myHeaders.append("Sec-Fetch-Dest", "empty");
-  myHeaders.append("Sec-Fetch-Storage-Access", "active");
-  myHeaders.append("host", "portals-market.com");
-
-  const requestOptions = {
-    method: "GET",
-    headers: myHeaders,
-    redirect: "follow"
-  };
-
-  const response = await fetch("https://portals-market.com/api/collections?limit=200", requestOptions);
-  return await response.json();
+// Получить ID коллекций из базы данных
+const getCollectionIdsFromDB = async () => {
+  try {
+    const collectionIds = await database.getAllCollectionIds();
+    console.log(`Получено ${collectionIds.length} ID коллекций из базы данных:`, collectionIds);
+    return collectionIds;
+  } catch (error) {
+    console.error('Ошибка получения ID коллекций из базы:', error);
+    return [];
+  }
 }
 
 const portalsCheckOfferGetAll = async ({ collectionId }) => {
@@ -61,7 +48,6 @@ const portalsCheckOfferGetAll = async ({ collectionId }) => {
       method: 'GET',
     },
   );
-  await delay(1000)
   return await response.json();
 };
 
@@ -156,7 +142,6 @@ const isMyOffer = ({ sender_id }) => {
 
 const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   console.log('Запуск функции saveMaxPrice для коллекции ' + collectionId)
-  await delay(1000)
   const offers = await portalsCheckOfferGetAll({ collectionId })
   const myOffer = offers.find(isMyOffer)
   let prevOffer
@@ -209,16 +194,28 @@ const getMyOffer = async ({ collectionId }) => {
   return offers.find(isMyOffer)
 }
 
-const startCorrectMaxOfferPrice = async ({ needCollections = null }) => {
-  const collections = needCollections ? needCollections : await getCollections()
-  // console.log('collections', collections)  
-  const collectionIds = collections.collections.map(({ id }) => id)
+const startCorrectMaxOfferPrice = async () => {
+  let collectionIds;
+
+  // Сначала пытаемся получить ID коллекций из базы данных
+  collectionIds = await getCollectionIdsFromDB();
+  console.log('collectionIds', collectionIds)
+  
+  if (collectionIds.length === 0) {
+    console.log('В базе данных нет ID коллекций для обработки, получаем все из getCollections');
+    const collections = await getCollections();
+    collectionIds = collections.collections.map(({ id }) => id);
+  }
   
   for (const collectionId of collectionIds) {
     await saveMaxPrice({ collectionId })
-    await delay(2000)
+    await delay(1000)
 
-    if (!controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId)) {
+    const existingInterval = controlMaxOfferPriceCollectionsIntervals.find(interval => interval.collectionId === collectionId);
+    console.log(`Проверка интервала для коллекции ${collectionId}:`, existingInterval ? 'найден' : 'не найден');
+    console.log('Текущие интервалы:', controlMaxOfferPriceCollectionsIntervals.map(i => i.collectionId));
+    
+    if (!existingInterval) {
       console.log('Создание интервала для коллекции ' + collectionId)
       const interval = setInterval(async () => {
         await saveMaxPrice({ collectionId })
@@ -229,6 +226,8 @@ const startCorrectMaxOfferPrice = async ({ needCollections = null }) => {
         collectionId,
         interval,
       })  
+    } else {
+      console.log('Интервал для коллекции ' + collectionId + ' уже существует, пропускаем')
     }
   }
 }
@@ -238,14 +237,13 @@ const startCorrectMaxOfferPrice = async ({ needCollections = null }) => {
  * @param {*} func - функция для запуска
  * @param {*} interval - интервал в минутах
  */
-const start = async (func, interval) => {
+const start = async (func, interval = 1) => {
   await func()
   await delay(1000)
   setInterval(async () => {
     await func()
     console.log('--------------------------------')
   }, interval * 1000 * 60)
-  await delay(1000)
 }
 
 /**
@@ -266,7 +264,6 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
     const floorPrice = Number(offers[0].collection.floor_price)
     const diffPercent = Number((100 - (((maxOfferPrice + 0.01) / floorPrice) * 100)).toFixed(2))
     const maxComfortPrice = Number((floorPrice - (floorPrice * (needDiffPercent / 100))).toFixed(2))
-    await delay(1000)
     const myOffer = await getMyOffer({ collectionId })
     
     if (diffPercent > needDiffPercent && floorPrice <= maxPrice) {
@@ -290,10 +287,13 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
       if (myOffer) {
         console.log('Обновление цены офера')
         await portalsCheckOfferPositionUpdatePrice({ price: maxOfferPrice + 0.01, offerId: myOffer.id })
-        await delay(5000)
       } else {
         console.log('Офер не найден')
-        await sendNotification({ text: `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%` })
+        const text = `В коллекции ${collections.find(({ id }) => id === collectionId).name} разница в цене ${diffPercent}%`
+        if (previousMessage !== text) {
+          previousMessage = text
+          await sendNotification({ text })
+        }
       }
     } else {
       if (myOffer) {
@@ -304,11 +304,22 @@ const searchDiscount = async ({ needDiffPercent, maxPrice }) => {
       console.log(JSON.stringify({ maxOfferPrice, floorPrice, diffPercent }))
       console.groupEnd()
     }
+
+    await delay(1000)
   }
 }
 
 // -- start section
-start(() => startCorrectMaxOfferPrice(['1501b9b9-83e0-4d05-a3af-d0e2021c6d5e']))
-start(() => searchDiscount({ needDiffPercent: 7, maxPrice: 35 }), 10)
+const main = async () => {
+  // Инициализируем базу данных
+  await initDatabase();
+  
+  // Запускаем обработку коллекций
+  await start(() => startCorrectMaxOfferPrice(), 30) // интервал 1 минута
+  await start(() => searchDiscount({ needDiffPercent: 10, maxPrice: 35 }), 30)
+}
+
+// Запускаем основную функцию
+main().catch(console.error);
 
 /** нужен кейс где идет покупка и запущен поиск дисконта */

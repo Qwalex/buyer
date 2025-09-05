@@ -3,12 +3,23 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js",
+    "bot": "node telegram-bot.js",
+    "db": "node db-manager.js",
+    "db:generate": "npx prisma generate",
+    "db:push": "npx prisma db push",
+    "db:studio": "npx prisma studio",
+    "db:migrate": "npx prisma migrate dev"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "dotenv": "^17.2.2"
+    "@prisma/client": "^6.15.0",
+    "dotenv": "^17.2.2",
+    "prisma": "^6.15.0",
+    "sqlite3": "^5.1.7",
+    "telegraf": "^4.16.3"
   }
 }
