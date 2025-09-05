@@ -90,6 +90,19 @@ class DatabaseManager {
     }
   }
 
+  // Очистить все записи из модели
+  async clearModel(modelName) {
+    await this.init();
+    try {
+      const result = await database.deleteMany(modelName, {});
+      console.log(`✅ Удалено ${result.count} записей из модели '${modelName}'`);
+      return result;
+    } catch (error) {
+      console.error(`❌ Ошибка очистки модели '${modelName}':`, error.message);
+      return null;
+    }
+  }
+
   // Показать информацию о всех моделях
   async showModelsInfo() {
     await this.init();
@@ -221,6 +234,15 @@ const runCommand = async () => {
         }
         break;
 
+      case 'clear':
+        if (!param1) {
+          console.log('❌ Укажите название модели для очистки');
+          console.log('Пример: node db-manager.js clear collection');
+          return;
+        }
+        await manager.clearModel(param1);
+        break;
+
       default:
         console.log('🔧 Универсальный менеджер базы данных с Prisma');
         console.log('');
@@ -228,10 +250,11 @@ const runCommand = async () => {
         console.log('  models                    - Показать информацию о всех моделях');
         console.log('  select <model>            - Показать все записи из модели');
         console.log('  count <model>             - Подсчитать записи в модели');
-        console.log('  add <model> <json> - Добавить запись в модель');
+        console.log('  add <model> <json>        - Добавить запись в модель');
         console.log('  delete <model> <json>     - Удалить записи по условию');
         console.log('  update <model> <where> <data> - Обновить записи');
         console.log('  find <model> <json>       - Найти одну запись по условию');
+        console.log('  clear <model>             - Очистить все записи из модели');
         console.log('');
         console.log('💡 Примеры:');
         console.log('  node db-manager.js models');
@@ -240,6 +263,7 @@ const runCommand = async () => {
         console.log('  node db-manager.js add collection \'{"collectionId":"1501b9b9-83e0-4d05-a3af-d0e2021c6d5e"}\'');
         console.log('  node db-manager.js delete collection \'{"collectionId":"1501b9b9-83e0-4d05-a3af-d0e2021c6d5e"}\'');
         console.log('  node db-manager.js find collection \'{"collectionId":"1501b9b9-83e0-4d05-a3af-d0e2021c6d5e"}\'');
+        console.log('  node db-manager.js clear collection');
         break;
     }
   } catch (error) {
