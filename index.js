@@ -51,7 +51,7 @@ const portalsCheckOfferGetAll = async ({ collectionId }) => {
   return await response.json();
 };
 
-const portalsCheckOfferPositionUpdatePrice = async ({ price, offerId }) => {
+const portalsCheckOfferPositionUpdatePrice = async ({ price, count, offerId }) => {
   const auth_token = await getToken()
   console.log('...in process portalsCheckOfferPositionUpdatePrice')
   const myHeaders = new Headers();
@@ -95,7 +95,7 @@ const portalsCheckOfferPositionUpdatePrice = async ({ price, offerId }) => {
   const raw = JSON.stringify({
     amount: price,
     id: offerId,
-    max_nfts: 1,
+    max_nfts: count,
   });
 
   const requestOptions = {
@@ -171,7 +171,7 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
   const currentOffersMaxPrice = Math.max(...offers.filter(({ sender_id }) => sender_id !== +user_id).map(({ amount }) => Number(Number(amount).toFixed(2))))
   const needPrice = Number((currentOffersMaxPrice < availableMaxPrice ? currentOffersMaxPrice + 0.01 : availableMaxPrice).toFixed(2))
   const offerId = myOffer.id
-  
+
   if (myOfferPrice !== needPrice) {
     console.log('Цена обновлена для коллекции ' + collectionId)
     console.log({
@@ -181,7 +181,7 @@ const saveMaxPrice = async ({ collectionId, includeCommision = false }) => {
       currentOffersMaxPrice,
       needPrice,
     })
-    await portalsCheckOfferPositionUpdatePrice({ price: needPrice, offerId })
+    await portalsCheckOfferPositionUpdatePrice({ price: needPrice, count: myOffer.max_nfts, offerId })
   } else {
     console.log('Цены актуальны для коллекции ' + collectionId)
   }
