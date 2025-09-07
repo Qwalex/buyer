@@ -316,7 +316,7 @@ const main = async () => {
   
   // Запускаем обработку коллекций
   await start(() => startCorrectMaxOfferPrice(), 30) // интервал 1 минута
-  await start(() => searchDiscount({ needDiffPercent: 10, maxPrice: 35 }), 30)
+  // await start(() => searchDiscount({ needDiffPercent: 10, maxPrice: 35 }), 30)
 }
 
 // Запускаем основную функцию
