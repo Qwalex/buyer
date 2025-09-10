@@ -105,29 +105,34 @@ const portalsCheckOfferPositionUpdatePrice = async ({ price, count, offerId }) =
     redirect: 'follow',
   };
 
-  const response = await fetch(
-    'https://portals-market.com/api/collection-offers/update',
-    requestOptions,
-  );
-  
-  // Проверяем статус ответа
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  
-  // Проверяем, что в ответе есть контент
-  const text = await response.text();
-  if (!text) {
-    console.log('Пустой ответ от сервера');
-    return null;
-  }
-  
   try {
-    const json = JSON.parse(text);
-    return json;
+    const response = await fetch(
+      'https://portals-market.com/api/collection-offers/update',
+      requestOptions,
+    );
+    
+    // Проверяем статус ответа
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    // Проверяем, что в ответе есть контент
+    const text = await response.text();
+    if (!text) {
+      console.log('Пустой ответ от сервера');
+      return null;
+    }
+    
+    try {
+      const json = JSON.parse(text);
+      return json;
+    } catch (error) {
+      console.log('Ошибка парсинга JSON:', error.message);
+      console.log('Полученный текст:', text);
+      return null;
+    }
   } catch (error) {
-    console.log('Ошибка парсинга JSON:', error.message);
-    console.log('Полученный текст:', text);
+    console.log('Ошибка при выполнении запроса:', error.message);
     return null;
   }
 };
